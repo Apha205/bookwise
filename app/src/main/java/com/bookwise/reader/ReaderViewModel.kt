@@ -21,6 +21,8 @@ import org.readium.navigator.web.reflowable.ReflowableWebGoLocation
 import org.readium.navigator.web.reflowable.ReflowableWebRenditionController
 import org.readium.navigator.web.reflowable.ReflowableWebRenditionFactory
 import org.readium.navigator.web.reflowable.ReflowableWebRenditionState
+import org.readium.navigator.common.Selection
+import org.readium.navigator.web.reflowable.ReflowableWebSelectionLocation
 import org.readium.navigator.web.reflowable.preferences.ReflowableWebPreferences
 import org.readium.navigator.web.reflowable.preferences.ReflowableWebSettings
 import org.readium.r2.navigator.preferences.ReadingProgression
@@ -147,7 +149,7 @@ class ReaderViewModel(
                 initialSettings = initialSettings,
                 initialLocation = initialLocation
             ).getOrElse {
-                _uiState.value = ReaderUiState.Error(it.message)
+                _uiState.value = ReaderUiState.Error("Could not render book")
                 pub.close()
                 return
             }
@@ -207,8 +209,30 @@ class ReaderViewModel(
         viewModelScope.launch { ctrl.goTo(url) }
     }
 
+    private val _selectedText = MutableStateFlow<String?>(null)
+    val selectedText: StateFlow<String?> = _selectedText.asStateFlow()
+
+    private val _selectedLocatorJson = MutableStateFlow<String?>(null)
+    val selectedLocatorJson: StateFlow<String?> = _selectedLocatorJson.asStateFlow()
+
+    suspend fun captureSelection() {
+        val ctrl = renditionState?.controller ?: return
+        val sel = ctrl.currentSelection() ?: return
+        val locator = sel.location.toLocator()
+        _selectedText.value = locator.text.highlight
+        _selectedLocatorJson.value = locator.toJSON().toString()
+    }
+
     fun tryAgain() {
         viewModelScope.launch { loadBook() }
+    }
+
+    fun clearSelection() {
+        _selectedText.value = null
+        _selectedLocatorJson.value = null
+        viewModelScope.launch {
+            renditionState?.controller?.clearSelection()
+        }
     }
 
     override fun onCleared() {

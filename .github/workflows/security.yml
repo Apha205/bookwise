@@ -27,9 +27,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
@@ -37,7 +34,10 @@ jobs:
           queries: security-and-quality
 
       - name: Build (Kotlin)
-        run: ./gradlew assembleDebug --no-daemon
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
 
       - name: Analyze
         uses: github/codeql-action/analyze@v3
@@ -82,15 +82,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
       - name: Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@0.24.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          format: sarif
-          output: trivy.sarif
+        run: trivy fs . --severity HIGH,CRITICAL --ignore-unfixed --format sarif --output trivy.sarif
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
