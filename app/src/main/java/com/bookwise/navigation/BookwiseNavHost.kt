@@ -20,6 +20,7 @@ import com.bookwise.library.LibraryViewModel
 import com.bookwise.reader.ReaderScreen
 import com.bookwise.reader.ReaderViewModel
 import com.bookwise.settings.SettingsScreen
+import com.bookwise.settings.SettingsViewModel
 
 @Composable
 fun BookwiseNavHost() {
@@ -62,7 +63,14 @@ fun BookwiseNavHost() {
             )
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(onBackClick = { navController.popBackStack() })
+            SettingsScreen(
+                onBackClick = { navController.popBackStack() },
+                viewModel = viewModel(factory = SettingsViewModel.factory(
+                    providerRepository = app.providerRepository,
+                    chatRepository = app.chatRepository,
+                    secureKeyRepository = app.secureKeyRepository
+                ))
+            )
         }
     }
 }

@@ -6,8 +6,14 @@ import com.bookwise.data.preferences.AppPreferences
 import com.bookwise.data.preferences.SettingsRepository
 import com.bookwise.data.repository.BookRepository
 import com.bookwise.data.repository.ReadingRepository
-import com.bookwise.library.BookImportHandler
+import com.bookwise.data.provider.ChatRepository
+import com.bookwise.data.provider.ChatRepositoryImpl
+import com.bookwise.data.provider.ProviderRepository
+import com.bookwise.data.provider.ProviderRepositoryImpl
+import com.bookwise.data.secure.KeyStoreManager
+import com.bookwise.data.secure.SecureKeyRepository
 import com.bookwise.library.epub.EpubValidator
+import com.bookwise.library.BookImportHandler
 import org.readium.r2.shared.util.asset.AssetRetriever
 import org.readium.r2.shared.util.http.DefaultHttpClient
 import org.readium.r2.streamer.PublicationOpener
@@ -20,9 +26,17 @@ class BookwiseApp : Application() {
         private set
     lateinit var settingsRepository: SettingsRepository
         private set
+    lateinit var appPreferences: AppPreferences
+        private set
     lateinit var epubValidator: EpubValidator
         private set
     lateinit var importHandler: BookImportHandler
+        private set
+    lateinit var secureKeyRepository: SecureKeyRepository
+        private set
+    lateinit var providerRepository: ProviderRepository
+        private set
+    lateinit var chatRepository: ChatRepository
         private set
     val defaultHttpClient: DefaultHttpClient by lazy { DefaultHttpClient() }
     val assetRetriever: AssetRetriever by lazy {
@@ -44,8 +58,12 @@ class BookwiseApp : Application() {
         val database = BookwiseDatabase.getInstance(this)
         bookRepository = BookRepository(database.bookDao(), database.readingProgressDao())
         readingRepository = ReadingRepository(bookRepository)
-        settingsRepository = SettingsRepository(AppPreferences(this))
+        appPreferences = AppPreferences(this)
+        settingsRepository = SettingsRepository(appPreferences)
         epubValidator = EpubValidator()
         importHandler = BookImportHandler(this, bookRepository, epubValidator)
+        secureKeyRepository = SecureKeyRepository(this, KeyStoreManager())
+        providerRepository = ProviderRepositoryImpl(appPreferences, secureKeyRepository)
+        chatRepository = ChatRepositoryImpl()
     }
 }
