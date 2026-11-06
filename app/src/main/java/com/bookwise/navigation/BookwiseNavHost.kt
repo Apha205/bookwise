@@ -19,6 +19,7 @@ import com.bookwise.library.LibraryScreen
 import com.bookwise.library.LibraryViewModel
 import com.bookwise.reader.ReaderScreen
 import com.bookwise.reader.ReaderViewModel
+import com.bookwise.tutor.TutorViewModel
 import com.bookwise.settings.SettingsScreen
 import com.bookwise.settings.SettingsViewModel
 
@@ -59,7 +60,8 @@ fun BookwiseNavHost() {
                     bookId = bookId,
                     bookRepository = app.bookRepository,
                     readingRepository = app.readingRepository
-                ))
+                )),
+                tutorViewModel = viewModel<TutorViewModel>(factory = TutorViewModel.factory(app.tutorRepository))
             )
         }
         composable(Routes.SETTINGS) {

@@ -5,6 +5,7 @@ import com.bookwise.data.local.BookwiseDatabase
 import com.bookwise.data.preferences.AppPreferences
 import com.bookwise.data.preferences.SettingsRepository
 import com.bookwise.data.repository.BookRepository
+import com.bookwise.data.repository.ExplanationRepositoryImpl
 import com.bookwise.data.repository.ReadingRepository
 import com.bookwise.data.provider.ChatRepository
 import com.bookwise.data.provider.ChatRepositoryImpl
@@ -12,8 +13,9 @@ import com.bookwise.data.provider.ProviderRepository
 import com.bookwise.data.provider.ProviderRepositoryImpl
 import com.bookwise.data.secure.KeyStoreManager
 import com.bookwise.data.secure.SecureKeyRepository
-import com.bookwise.library.epub.EpubValidator
+import com.bookwise.tutor.TutorRepository
 import com.bookwise.library.BookImportHandler
+import com.bookwise.library.epub.EpubValidator
 import org.readium.r2.shared.util.asset.AssetRetriever
 import org.readium.r2.shared.util.http.DefaultHttpClient
 import org.readium.r2.streamer.PublicationOpener
@@ -37,6 +39,8 @@ class BookwiseApp : Application() {
     lateinit var providerRepository: ProviderRepository
         private set
     lateinit var chatRepository: ChatRepository
+        private set
+    lateinit var tutorRepository: TutorRepository
         private set
     val defaultHttpClient: DefaultHttpClient by lazy { DefaultHttpClient() }
     val assetRetriever: AssetRetriever by lazy {
@@ -65,5 +69,6 @@ class BookwiseApp : Application() {
         secureKeyRepository = SecureKeyRepository(this, KeyStoreManager())
         providerRepository = ProviderRepositoryImpl(appPreferences, secureKeyRepository)
         chatRepository = ChatRepositoryImpl()
+        tutorRepository = TutorRepository(chatRepository, providerRepository, ExplanationRepositoryImpl(database.explanationDao()))
     }
 }
