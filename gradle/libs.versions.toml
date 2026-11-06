@@ -20,7 +20,8 @@ readiumNavigator = "3.2.0"         # Readium navigator — matches readium 3.2.0
 ksp = "2.3.13"                     # KSP — matches Kotlin 2.3.20 / Readium 3.2.0
 parcelize = "2.3.20"               # kotlin-parcelize-runtime — matches Kotlin 2.3.20
 desugarJdkLibs = "2.1.5"           # Android desugaring — stable
-kotlinxCollectionsImmutable = "0.4.0" # Readium navigator dep — 0.4.1 does not exist; 0.4.0 is the last 0.4.x
+ktor = "3.0.3"                      # Ktor client — OpenAI-compatible provider calls
+securityCrypto = "1.0.0"             # EncryptedSharedPreferences for key ciphertext
 kotlinxSerializationJson = "1.11.0"  # Readium shared dep — matches 3.2.0 POM
 
 
@@ -53,6 +54,11 @@ readium-navigator-common = { group = "org.readium.kotlin-toolkit", name = "readi
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktor-client-cio = { group = "io.ktor", name = "ktor-client-cio", version.ref = "ktor" }
+ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxJunit" }
 androidx-espresso = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidxEspresso" }

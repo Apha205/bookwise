@@ -93,6 +93,11 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     coreLibraryDesugaring(libs.android.desugar.jdk.libs)
     implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.androidx.security.crypto)
 
     ksp(libs.androidx.room.compiler)
 

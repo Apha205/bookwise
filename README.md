@@ -6,7 +6,7 @@ The reader works fully offline with no account and no AI key. The optional AI tu
 
 ## Status
 
-**Phase 4 — Text selection (in progress).** Phase 1–3 plus in-reader text selection via Readium's `SelectionController`: long-press selection, contextual "Ask tutor" action mode, capture of selected passage + locator, and a selection preview card. BYOK/AI tutor and highlight persistence arrive in Phases 5–7.
+**Phase 5 — BYOK (in progress).** Phase 1–4 plus secure API-key storage (Android Keystore + encrypted prefs), OpenAI-compatible chat client (Ktor, SSE streaming), provider settings UI (preset/base URL/model/key/test connection), and a reusable ChatRepository for Phase 6.
 
 ## Architecture & rationale
 
@@ -80,7 +80,7 @@ Debug APK: `app\build\outputs\apk\debug\app-debug.apk`
 2. Phase 2 — Library & import ✅
 3. Phase 3 — Reader (renderer, TOC, locator-based progress) ✅
 4. Phase 4 — Text selection (verified against real EPUB content) ✅
-5. Phase 5 — BYOK (secure key storage, provider, error handling)
+5. Phase 5 — BYOK (secure key storage, provider, error handling) ✅
 6. Phase 6 — Tutor (actions, follow-ups, saved explanations)
 7. Phase 7 — Hardening (tests, migrations, licenses, accessibility)
 

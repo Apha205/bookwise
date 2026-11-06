@@ -20,6 +20,7 @@ class AppPreferences(private val context: Context) {
     private val modelId = stringPreferencesKey("model_id")
     private val endpointOverride = stringPreferencesKey("endpoint_override")
     private val hasKey = booleanPreferencesKey("has_api_key")
+    private val providerConfigJson = stringPreferencesKey("provider_config_json")
 
     fun fontScaleFlow(): Flow<Float> = context.preferencesDataStore.data.map { it[fontScale] ?: 1.0f }
     fun themeModeFlow(): Flow<String> = context.preferencesDataStore.data.map { it[themeMode] ?: "system" }
@@ -43,7 +44,10 @@ class AppPreferences(private val context: Context) {
         }
     }
 
-    suspend fun setHasKey(value: Boolean) = context.preferencesDataStore.edit { it[hasKey] = value }
+    fun providerConfigJsonFlow(): Flow<String?> = context.preferencesDataStore.data.map { it[providerConfigJson] }
+    suspend fun setProviderConfigJson(value: String?) = context.preferencesDataStore.edit {
+        if (value != null) it[providerConfigJson] = value else it.remove(providerConfigJson)
+    }
 }
 
 class SettingsRepository(private val preferences: AppPreferences) {
@@ -58,5 +62,6 @@ class SettingsRepository(private val preferences: AppPreferences) {
     suspend fun setThemeMode(value: String) = preferences.setThemeMode(value)
     suspend fun setProvider(provider: String?, model: String?, endpoint: String?) =
         preferences.setProvider(provider, model, endpoint)
-    suspend fun setHasKey(value: Boolean) = preferences.setHasKey(value)
+    fun providerConfigJsonFlow(): Flow<String?> = preferences.providerConfigJsonFlow()
+    suspend fun setProviderConfigJson(value: String?) = preferences.setProviderConfigJson(value)
 }
