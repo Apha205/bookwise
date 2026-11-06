@@ -63,25 +63,43 @@ class EpubValidator {
 
         val sha = sha256Hex(bytes)
         val entries = mutableMapOf<String, ByteArray>()
+        val tempFile = java.io.File.createTempFile("epub", ".zip")
         try {
-            ZipInputStream(bytes.inputStream()).use { zis ->
-                var entry: ZipEntry? = zis.nextEntry
-                while (entry != null) {
+            tempFile.writeBytes(bytes)
+            val zipFile = java.util.zip.ZipFile(tempFile)
+            try {
+                val enumeration = zipFile.entries()
+                while (enumeration.hasMoreElements()) {
+                    val entry = enumeration.nextElement()
                     val name = entry.name
                     if (name.startsWith("/") || name.contains("..")) return ImportResult.Failure(FailureReason.ZipSlip)
                     if (!entry.isDirectory) {
-                        entries[name] = zis.readBytesLimited(50L * 1024 * 1024)
+                        entries[name] = zipFile.getInputStream(entry).readBytesLimited(50L * 1024 * 1024)
                     }
-                    entry = zis.nextEntry
                 }
+            } finally {
+                zipFile.close()
             }
         } catch (e: IOException) {
             return ImportResult.Failure(FailureReason.CorruptEntry)
+        } finally {
+            tempFile.delete()
         }
 
-        val mimetype = entries["mimetype"] ?: return ImportResult.Failure(FailureReason.MissingMimetype)
-        val mimetypeText = mimetype.toString(Charsets.UTF_8).trim()
-        if (!mimetypeText.equals("application/epub+zip", ignoreCase = true)) {
+        val mimetypeEntry = entries["mimetype"]
+            ?: entries.entries.firstOrNull {
+                val name = it.key.trim().removePrefix("./").removePrefix("/").lowercase()
+                name == "mimetype" || name.endsWith("/mimetype") || name.endsWith("mimetype")
+            }?.value
+        if (mimetypeEntry == null) {
+            android.util.Log.w("EpubValidator", "mimetype entry not found. ZIP entries: ${entries.keys}")
+            return ImportResult.Failure(FailureReason.MissingMimetype)
+        }
+        val raw = mimetypeEntry.toString(Charsets.UTF_8)
+        val mimetypeText = raw.removePrefix("\uFEFF").replace(Regex("\\s+"), "")
+        android.util.Log.d("EpubValidator", "mimetype raw=[$raw] normalized=[$mimetypeText]")
+        if (!mimetypeText.contains("application/epub+zip", ignoreCase = true)) {
+            android.util.Log.w("EpubValidator", "Bad mimetype: [$mimetypeText]")
             return ImportResult.Failure(FailureReason.BadMimetype)
         }
 
