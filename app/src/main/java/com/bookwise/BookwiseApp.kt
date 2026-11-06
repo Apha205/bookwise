@@ -8,7 +8,10 @@ import com.bookwise.data.repository.BookRepository
 import com.bookwise.data.repository.ReadingRepository
 import com.bookwise.library.BookImportHandler
 import com.bookwise.library.epub.EpubValidator
-import com.bookwise.reader.ReadiumRenderer
+import org.readium.r2.shared.util.asset.AssetRetriever
+import org.readium.r2.shared.util.http.DefaultHttpClient
+import org.readium.r2.streamer.PublicationOpener
+import org.readium.r2.streamer.parser.DefaultPublicationParser
 
 class BookwiseApp : Application() {
     lateinit var bookRepository: BookRepository
@@ -21,8 +24,20 @@ class BookwiseApp : Application() {
         private set
     lateinit var importHandler: BookImportHandler
         private set
-    lateinit var readiumRenderer: ReadiumRenderer
-        private set
+    val defaultHttpClient: DefaultHttpClient by lazy { DefaultHttpClient() }
+    val assetRetriever: AssetRetriever by lazy {
+        AssetRetriever(contentResolver, defaultHttpClient)
+    }
+    val publicationOpener: PublicationOpener by lazy {
+        PublicationOpener(
+            DefaultPublicationParser(
+                context = this,
+                httpClient = defaultHttpClient,
+                assetRetriever = assetRetriever,
+                pdfFactory = null
+            )
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -32,6 +47,5 @@ class BookwiseApp : Application() {
         settingsRepository = SettingsRepository(AppPreferences(this))
         epubValidator = EpubValidator()
         importHandler = BookImportHandler(this, bookRepository, epubValidator)
-        readiumRenderer = ReadiumRenderer()
     }
 }

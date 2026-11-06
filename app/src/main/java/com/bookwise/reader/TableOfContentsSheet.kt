@@ -13,18 +13,20 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.bookwise.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TableOfContentsSheet(
-    entries: List<ReadiumTocEntry>,
-    onSelect: (ReadiumTocEntry) -> Unit,
+    entries: List<TocEntry>,
+    onSelect: (TocEntry) -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Text(text = "Contents", style = MaterialTheme.typography.titleLarge)
+            Text(text = stringResource(R.string.reader_contents), style = MaterialTheme.typography.titleLarge)
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(8.dp))
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(entries) { entry ->

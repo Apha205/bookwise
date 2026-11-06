@@ -7,15 +7,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.bookwise.BookwiseApp
 import com.bookwise.data.repository.BookRepository
 import com.bookwise.library.BookImportHandler
 import com.bookwise.library.LibraryScreen
 import com.bookwise.library.LibraryViewModel
 import com.bookwise.reader.ReaderScreen
+import com.bookwise.reader.ReaderViewModel
 import com.bookwise.settings.SettingsScreen
 
 @Composable
@@ -30,9 +33,9 @@ fun BookwiseNavHost() {
     ) {
         composable(Routes.LIBRARY) {
             LibraryScreen(
-                onImportClick = { navController.navigate(Routes.READER) },
+                onImportClick = { },
                 onSettingsClick = { navController.navigate(Routes.SETTINGS) },
-                onBookClick = { navController.navigate(Routes.READER) },
+                onBookClick = { book -> navController.navigate(Routes.reader(book.id)) },
                 viewModel = viewModel(factory = object : ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST")
                     override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
@@ -42,8 +45,21 @@ fun BookwiseNavHost() {
                 })
             )
         }
-        composable(Routes.READER) {
-            ReaderScreen(onBackClick = { navController.popBackStack() })
+        composable(
+            route = "${Routes.READER}/{${Routes.READER_ARG_BOOK_ID}}",
+            arguments = listOf(navArgument(Routes.READER_ARG_BOOK_ID) { type = NavType.StringType })
+        ) { backStackEntry ->
+            val bookId = backStackEntry.arguments?.getString(Routes.READER_ARG_BOOK_ID)
+                ?: return@composable
+            ReaderScreen(
+                onBackClick = { navController.popBackStack() },
+                viewModel = viewModel(factory = ReaderViewModel.factory(
+                    application = app,
+                    bookId = bookId,
+                    bookRepository = app.bookRepository,
+                    readingRepository = app.readingRepository
+                ))
+            )
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(onBackClick = { navController.popBackStack() })

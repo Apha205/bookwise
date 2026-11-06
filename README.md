@@ -6,9 +6,7 @@ The reader works fully offline with no account and no AI key. The optional AI tu
 
 ## Status
 
-**Phase 2 — Library & import.** Phase 1 app shell plus document picking (SAF), EPUB validation/metadata via Readium, Room persistence, app-private file copy, duplicate detection, and library list with covers.
-
-Reader rendering, text selection, and AI are intentionally not implemented yet — those are Phases 3+.
+**Phase 3 — Reader (in progress).** Phase 1 app shell + Phase 2 library/import, plus EPUB rendering via Readium's alpha Compose navigator (`ReflowableWebRendition`), table of contents sheet, and locator-based reading progress (save/restore). Text selection, AI tutor, and settings are not implemented yet (Phases 4+).
 
 ## Architecture & rationale
 
@@ -19,7 +17,7 @@ Reader rendering, text selection, and AI are intentionally not implemented yet �
 ### Storage
 
 - **Files:** `filesDir/books/` (EPUB copy) and `filesDir/covers/` — app-private via `Context.filesDir`, needs no `READ_EXTERNAL_STORAGE`, removed on uninstall. SAF URI is used only as the import source; the app never relies on its temporary grant.
-- **Structured data:** Room `books` + `reading_progress` (`bookwise.db`, version 1). `books.sha256` is unique for dedupe. `reading_progress.bookId` is FK CASCADE to `books.id` so deleting a book wipes its progress row atomically. `exportSchema = true` so Phase 7 migrations can be tested.
+- **Structured data:** Room `books` + `reading_progress` (`bookwise.db`, version 1). `books.sha256` is unique for dedupe. `reading_progress.bookId` is FK CASCADE to `books.id` so deleting a book wipes its progress row atomically. `exportSchema = false` for now (Phase 7 migrations will re-enable).
 - **Preferences:** DataStore `app_preferences` for non-secrets (font scale, theme, provider/model). API keys are never stored here and are not implemented yet.
 
 ### Import safety
@@ -61,8 +59,8 @@ Debug APK: `app\build\outputs\apk\debug\app-debug.apk`
 
 | Component | Version | Source |
 |---|---|---|
-| AGP | 8.13.0 | Gradle plugin portal |
-| Kotlin | 2.4.20 | Maven Central |
+| AGP | 8.13.2 | Gradle plugin portal |
+| Kotlin | 2.3.20 | Maven Central |
 | Compose BOM | 2025.09.00 | Google Maven |
 | Navigation Compose | 2.9.5 | Google Maven |
 | Activity Compose | 1.10.1 | Google Maven |
@@ -71,8 +69,8 @@ Debug APK: `app\build\outputs\apk\debug\app-debug.apk`
 | Coroutines | 1.10.2 | Maven Central |
 | Room | 2.8.5 | Google Maven |
 | DataStore | 1.2.0 | Google Maven |
-| Readium | 3.4.0 | Maven Central |
-| KSP | 2.0.20-1.0.25 | Maven Central |
+| Readium | 3.2.0 | Maven Central |
+| KSP | 2.3.13 | Maven Central |
 
 `compileSdk 36`, `targetSdk 36`, `minSdk 26`, JVM 17.
 
@@ -88,4 +86,4 @@ Debug APK: `app\build\outputs\apk\debug\app-debug.apk`
 
 ## License
 
-Bookwise is an original implementation. Readium Kotlin Toolkit 3.4.0 (BSD-3-Clause) is used as a dependency only — no source copied. All other Phase 2 deps are permissive (Apache-2.0 / MIT / BSD-3).
+Bookwise is an original implementation. Readium Kotlin Toolkit 3.2.0 (BSD-3-Clause) is used as a dependency only — no source copied. All other deps are permissive (Apache-2.0 / MIT / BSD-3).

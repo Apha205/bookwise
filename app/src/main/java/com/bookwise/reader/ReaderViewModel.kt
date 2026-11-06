@@ -1,8 +1,13 @@
+@file:OptIn(org.readium.r2.shared.ExperimentalReadiumApi::class)
+
 package com.bookwise.reader
 
-import android.content.Context
+import android.app.Application
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewModelScope
+import com.bookwise.BookwiseApp
 import com.bookwise.data.repository.BookRepository
 import com.bookwise.data.repository.ReadingRepository
 import com.bookwise.domain.model.Book
@@ -10,131 +15,196 @@ import com.bookwise.domain.model.ReadingProgress
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import org.readium.r2.navigator.readium2.Navigator
-import org.readium.r2.shared.publication.Link
+import org.readium.navigator.web.reflowable.ReflowableWebGoLocation
+import org.readium.navigator.web.reflowable.ReflowableWebRenditionController
+import org.readium.navigator.web.reflowable.ReflowableWebRenditionFactory
+import org.readium.navigator.web.reflowable.ReflowableWebRenditionState
+import org.readium.navigator.web.reflowable.preferences.ReflowableWebPreferences
+import org.readium.navigator.web.reflowable.preferences.ReflowableWebSettings
+import org.readium.r2.navigator.preferences.ReadingProgression
+import androidx.compose.runtime.snapshotFlow
 import org.readium.r2.shared.publication.Locator
-import org.readium.r2.shared.publication.LocatorCollection
-import org.readium.r2.shared.publication.LocatorFragment
-import org.readium.r2.shared.publication.LocatorLocations
-import org.readium.r2.shared.publication.LocatorText
 import org.readium.r2.shared.publication.Publication
-import org.readium.r2.streamer.PublicationOpener
-import org.readium.r2.streamer.util.FileAsset
-import org.readium.r2.shared.util.AbsoluteUrl
-import org.readium.r2.shared.util.Either
-import org.readium.r2.shared.util.failure
-import org.readium.r2.shared.util.isLeft
-import org.readium.r2.shared.util.onLeft
+import org.readium.r2.shared.publication.services.locateProgression
+import org.readium.r2.shared.util.Url
+import org.readium.r2.shared.util.getOrElse
+import org.readium.r2.shared.util.toUrl
+import org.json.JSONObject
 import java.io.File
 
 sealed interface ReaderUiState {
     data object Loading : ReaderUiState
-    data object Error : ReaderUiState
+    data class Error(val message: String) : ReaderUiState
     data class Ready(
         val book: Book,
         val publication: Publication,
-        val readingOrder: List<ReadiumTocEntry> = emptyList(),
-        val locator: Locator? = null,
+        val renditionState: ReflowableWebRenditionState,
+        val tocEntries: List<TocEntry> = emptyList(),
         val totalProgress: Double? = null,
         val chapterTitle: String? = null
     ) : ReaderUiState
 }
 
-data class ReadiumTocEntry(
-    val title: String,
-    val href: AbsoluteUrl?,
-    val locator: Locator?
-)
+data class TocEntry(val title: String, val url: Url)
 
 class ReaderViewModel(
-    private val context: Context,
+    private val application: Application,
     private val bookId: String,
     private val bookRepository: BookRepository,
     private val readingRepository: ReadingRepository
 ) : ViewModel() {
 
+    private val app = application as BookwiseApp
+
     private val _uiState = MutableStateFlow<ReaderUiState>(ReaderUiState.Loading)
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
 
+    private val _totalProgress = MutableStateFlow<Double?>(null)
+    val totalProgress: StateFlow<Double?> = _totalProgress.asStateFlow()
+
     private var publication: Publication? = null
-    var navigator: Navigator? = null
+    private var renditionState: ReflowableWebRenditionState? = null
+    private var chapterTitlesByHref: Map<String, String> = emptyMap()
 
     init {
-        viewModelScope.launch {
-            loadBook()
-        }
+        viewModelScope.launch { loadBook() }
     }
 
     private suspend fun loadBook() {
         _uiState.value = ReaderUiState.Loading
         try {
             val book = bookRepository.getById(bookId) ?: run {
-                _uiState.value = ReaderUiState.Error
+                _uiState.value = ReaderUiState.Error("Book not found")
                 return
             }
             val file = File(book.internalPath)
             if (!file.exists()) {
-                _uiState.value = ReaderUiState.Error
+                _uiState.value = ReaderUiState.Error("File missing")
                 return
             }
-            val asset = FileAsset(file, mediaType = "application/epub+zip")
-            val opener = PublicationOpener()
-            val openResult = opener.open(asset)
-            if (openResult.isLeft) {
-                _uiState.value = ReaderUiState.Error
+            val url = file.toUrl(false)
+            val asset = app.assetRetriever.retrieve(url).getOrElse {
+                _uiState.value = ReaderUiState.Error(it.message)
                 return
             }
-            val pub = openResult.onLeft { null } ?: run {
-                _uiState.value = ReaderUiState.Error
+            val pub = app.publicationOpener.open(asset, allowUserInteraction = false).getOrElse {
+                _uiState.value = ReaderUiState.Error(it.message)
                 return
             }
             publication = pub
-            val readingOrder = pub.readingOrder.map { link ->
-                val title = link.title ?: link.href?.toString() ?: "Unknown"
-                val locator = Locator.fromLink(link)
-                ReadiumTocEntry(title = title, href = link.href, locator = locator)
-            }
+
             val savedProgress = readingRepository.getProgress(bookId)
-            val initialLocator = readingOrder.firstOrNull()?.locator
+            val initialLocator = savedProgress?.locatorJson?.let { json ->
+                try { Locator.fromJSON(org.json.JSONObject(json)) } catch (e: Exception) { null }
+            }
+
+            val factory = ReflowableWebRenditionFactory(
+                application = application,
+                publication = pub,
+                configuration = org.readium.navigator.web.reflowable.ReflowableWebConfiguration()
+            )
+            if (factory == null) {
+                _uiState.value = ReaderUiState.Error("Unsupported publication")
+                pub.close()
+                return
+            }
+
+            val fontScale = try { app.settingsRepository.fontScaleFlow().first() } catch (e: Exception) { 1.0f }
+            val initialSettings = ReflowableWebSettings(
+                backgroundColor = ReflowableWebPreferences.LightTheme.backgroundColor!!,
+                columnCount = null,
+                fontFamily = null,
+                fontSize = fontScale.toDouble(),
+                fontWeight = null,
+                hyphens = null,
+                imageFilter = null,
+                language = null,
+                letterSpacing = null,
+                ligatures = null,
+                lineHeight = null,
+                linkColor = ReflowableWebPreferences.LightTheme.linkColor!!,
+                maximalLineLength = null,
+                minimalLineLength = null,
+                minMargins = 1.0,
+                optimalLineLength = 1.0,
+                overridePublisherColors = false,
+                paragraphIndent = null,
+                paragraphSpacing = null,
+                readingProgression = ReadingProgression.LTR,
+                scroll = false,
+                textAlign = null,
+                textColor = ReflowableWebPreferences.LightTheme.textColor!!,
+                textNormalization = false,
+                verticalText = false,
+                visitedColor = ReflowableWebPreferences.LightTheme.visitedColor!!,
+                wordSpacing = null
+            )
+
+            val initialLocation = initialLocator?.let { ReflowableWebGoLocation(it) }
+            val state = factory.createRenditionState(
+                initialSettings = initialSettings,
+                initialLocation = initialLocation
+            ).getOrElse {
+                _uiState.value = ReaderUiState.Error(it.message)
+                pub.close()
+                return
+            }
+            renditionState = state
+
+            val tocEntries = pub.tableOfContents.map { link ->
+                TocEntry(title = link.title ?: link.url().toString(), url = link.url())
+            }
+            chapterTitlesByHref = tocEntries.associate { it.url.toString() to it.title }
+
             _uiState.value = ReaderUiState.Ready(
                 book = book,
                 publication = pub,
-                readingOrder = readingOrder,
-                locator = initialLocator,
+                renditionState = state,
+                tocEntries = tocEntries,
                 totalProgress = savedProgress?.totalProgress,
                 chapterTitle = savedProgress?.chapterTitle
             )
+            _totalProgress.value = savedProgress?.totalProgress
         } catch (e: Exception) {
-            _uiState.value = ReaderUiState.Error
+            _uiState.value = ReaderUiState.Error(e.message ?: "Unknown error")
         }
     }
 
-    fun onReaderMoved(locator: org.readium.r2.shared.publication.Locator, progression: Float?, totalProgress: Double?, title: String?) {
+    fun onControllerAvailable(controller: ReflowableWebRenditionController) {
         viewModelScope.launch {
-            val progress = ReadingProgress(
-                bookId = bookId,
-                locatorJson = locator.toString(),
-                progression = progression,
-                chapterHref = locator.href.toString(),
-                chapterTitle = title,
-                totalProgress = totalProgress,
-                updatedAtMillis = System.currentTimeMillis()
-            )
-            readingRepository.saveProgress(progress)
+            snapshotFlow { controller.location }.collect { loc ->
+                onLocationChanged(loc)
+            }
         }
     }
 
-    fun goTo(entry: ReadiumTocEntry) {
-        entry.locator?.let { navigator?.go(it, animated = false) }
+    private suspend fun onLocationChanged(loc: org.readium.navigator.web.reflowable.ReflowableWebLocation) {
+        val progress = ReadingProgress(
+            bookId = bookId,
+            locatorJson = loc.toLocator().toJSON().toString(),
+            progression = loc.progression.value.toFloat(),
+            chapterHref = loc.href.toString(),
+            chapterTitle = chapterTitlesByHref[loc.href.toString()],
+            totalProgress = loc.totalProgression.value,
+            updatedAtMillis = System.currentTimeMillis()
+        )
+        try { readingRepository.saveProgress(progress) } catch (e: Exception) { }
+        _totalProgress.value = loc.totalProgression.value
     }
 
     fun goToProgression(fraction: Float) {
-        val ready = _uiState.value as? ReaderUiState.Ready ?: return
-        val order = ready.readingOrder
-        if (order.isEmpty()) return
-        val index = ((fraction * order.size).toInt()).coerceIn(0, order.size - 1)
-        order[index].locator?.let { navigator?.go(it, animated = false) }
+        val pub = publication ?: return
+        val ctrl = renditionState?.controller ?: return
+        viewModelScope.launch {
+            pub.locateProgression(fraction.toDouble())?.let { ctrl.goTo(ReflowableWebGoLocation(it)) }
+        }
+    }
+
+    fun goTo(url: Url) {
+        val ctrl = renditionState?.controller ?: return
+        viewModelScope.launch { ctrl.goTo(url) }
     }
 
     fun tryAgain() {
@@ -143,7 +213,21 @@ class ReaderViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        navigator?.destroy()
         publication?.close()
+    }
+
+    companion object {
+        fun factory(
+            application: Application,
+            bookId: String,
+            bookRepository: BookRepository,
+            readingRepository: ReadingRepository
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                require(modelClass.isAssignableFrom(ReaderViewModel::class.java))
+                return ReaderViewModel(application, bookId, bookRepository, readingRepository) as T
+            }
+        }
     }
 }

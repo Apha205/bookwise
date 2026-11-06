@@ -1,8 +1,9 @@
 package com.bookwise.reader
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -44,9 +45,9 @@ fun ReaderControls(
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
-        androidx.compose.foundation.layout.Row(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = androidx.compose.ui.Alignment.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Button(onClick = onPrevious) { Text(text = stringResource(R.string.reader_previous)) }
             Button(onClick = onOpenToc) { Text(text = stringResource(R.string.reader_contents)) }
