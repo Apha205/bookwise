@@ -1,0 +1,34 @@
+# Build outputs
+build/
+bin/
+out/
+
+# Gradle
+.gradle/
+gradle-app.properties
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+local.properties
+
+# Generated
+captures/
+.cxx/
+**/generated/
+
+# IDE
+.idea/
+*.iml
+kotlin-js-store/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / signing
+*.jks
+*.keystore
+keystore.properties
