@@ -2,18 +2,24 @@
 
 package com.bookwise.reader
 
+import android.view.ActionMode
+import android.view.Menu
+import android.view.MenuItem
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,11 +37,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.readium.navigator.web.reflowable.ReflowableWebRendition
 import org.readium.navigator.web.reflowable.ReflowableWebRenditionController
 import org.readium.r2.shared.ExperimentalReadiumApi
 import com.bookwise.R
+
+private const val MENU_ASK_TUTOR = 1001
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalReadiumApi::class)
 @Composable
@@ -45,7 +54,9 @@ fun ReaderScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val totalProgress by viewModel.totalProgress.collectAsStateWithLifecycle()
+    val selectedText by viewModel.selectedText.collectAsStateWithLifecycle()
     var showToc by remember { mutableStateOf(false) }
+    val askTutorLabel = stringResource(R.string.reader_select_ask_tutor)
     val scope = rememberCoroutineScope()
 
     Scaffold(
@@ -70,7 +81,7 @@ fun ReaderScreen(
                     if (uiState is ReaderUiState.Ready) {
                         IconButton(onClick = { showToc = true }) {
                             Icon(
-                                imageVector = Icons.Filled.FormatListBulleted,
+                                imageVector = Icons.AutoMirrored.Filled.FormatListBulleted,
                                 contentDescription = stringResource(R.string.reader_contents)
                             )
                         }
@@ -95,7 +106,25 @@ fun ReaderScreen(
                 Column(modifier = Modifier.padding(padding).fillMaxSize()) {
                     ReflowableWebRendition(
                         state = state.renditionState,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        textSelectionActionModeCallback = object : ActionMode.Callback {
+                            override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
+                                menu?.add(0, MENU_ASK_TUTOR, 0, askTutorLabel)
+                                return true
+                            }
+                            override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean = false
+                            override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
+                                return when (item?.itemId) {
+                                    MENU_ASK_TUTOR -> {
+                                        scope.launch { viewModel.captureSelection() }
+                                        mode?.finish()
+                                        true
+                                    }
+                                    else -> false
+                                }
+                            }
+                            override fun onDestroyActionMode(mode: ActionMode?) {}
+                        }
                     )
                     ReaderControls(
                         progression = (totalProgress ?: state.totalProgress ?: 0.0).toFloat(),
@@ -110,6 +139,21 @@ fun ReaderScreen(
                         },
                         onOpenToc = { showToc = true }
                     )
+                    selectedText?.let { quote ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(8.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(text = stringResource(R.string.reader_selection_preview), style = MaterialTheme.typography.labelMedium)
+                                androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(4.dp))
+                                Text(text = "\u201C$quote\u201D", style = MaterialTheme.typography.bodyMedium)
+                                androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(8.dp))
+                                TextButton(onClick = { viewModel.clearSelection() }) {
+                                    Text(text = stringResource(R.string.reader_selection_clear))
+                                }
+                            }
+                        }
+                    }
                 }
                 if (showToc) {
                     TableOfContentsSheet(
@@ -122,11 +166,9 @@ fun ReaderScreen(
                     )
                 }
 
-                // Observe controller availability + location
                 LaunchedEffect(state.renditionState) {
-                    // wait for controller
                     while (state.renditionState.controller == null) {
-                        kotlinx.coroutines.delay(50)
+                        delay(50)
                     }
                     val controller = state.renditionState.controller as ReflowableWebRenditionController
                     viewModel.onControllerAvailable(controller)

@@ -17,6 +17,10 @@
     <string name="reader_error_title">Could not open book</string>
     <string name="reader_error_message">This book could not be opened. It may be corrupted or in an unsupported format.</string>
     <string name="reader_retry">Retry</string>
+    <string name="reader_select_ask_tutor">Ask tutor</string>
+    <string name="reader_select_copied">Copied</string>
+    <string name="reader_selection_preview">Selection</string>
+    <string name="reader_selection_clear">Clear</string>
     <string name="settings_title">Settings</string>
     <string name="settings_placeholder">Settings placeholder — provider configuration arrives in Phase 5.</string>
 </resources>
