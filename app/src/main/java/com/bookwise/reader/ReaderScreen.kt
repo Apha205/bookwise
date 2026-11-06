@@ -42,6 +42,8 @@ import kotlinx.coroutines.launch
 import org.readium.navigator.web.reflowable.ReflowableWebRendition
 import org.readium.navigator.web.reflowable.ReflowableWebRenditionController
 import org.readium.r2.shared.ExperimentalReadiumApi
+import com.bookwise.tutor.TutorSheet
+import com.bookwise.tutor.TutorViewModel
 import com.bookwise.R
 
 private const val MENU_ASK_TUTOR = 1001
@@ -50,12 +52,15 @@ private const val MENU_ASK_TUTOR = 1001
 @Composable
 fun ReaderScreen(
     onBackClick: () -> Unit,
-    viewModel: ReaderViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    viewModel: ReaderViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    tutorViewModel: TutorViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val totalProgress by viewModel.totalProgress.collectAsStateWithLifecycle()
     val selectedText by viewModel.selectedText.collectAsStateWithLifecycle()
+    val selectedLocatorJson by viewModel.selectedLocatorJson.collectAsStateWithLifecycle()
     var showToc by remember { mutableStateOf(false) }
+    var showTutor by remember { mutableStateOf(false) }
     val askTutorLabel = stringResource(R.string.reader_select_ask_tutor)
     val scope = rememberCoroutineScope()
 
@@ -151,6 +156,9 @@ fun ReaderScreen(
                                 TextButton(onClick = { viewModel.clearSelection() }) {
                                     Text(text = stringResource(R.string.reader_selection_clear))
                                 }
+                                TextButton(onClick = { showTutor = true }) {
+                                    Text(text = stringResource(R.string.reader_select_ask_tutor))
+                                }
                             }
                         }
                     }
@@ -163,6 +171,17 @@ fun ReaderScreen(
                             showToc = false
                         },
                         onDismiss = { showToc = false }
+                    )
+                }
+
+                if (showTutor && selectedText != null) {
+                    TutorSheet(
+                        bookId = state.book.id,
+                        passage = selectedText!!,
+                        locatorJson = selectedLocatorJson,
+                        viewModel = tutorViewModel,
+                        onDismiss = { showTutor = false },
+                        onSave = { }
                     )
                 }
 

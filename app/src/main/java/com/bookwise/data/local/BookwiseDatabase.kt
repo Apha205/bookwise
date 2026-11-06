@@ -5,17 +5,20 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.bookwise.data.local.dao.BookDao
+import com.bookwise.data.local.dao.ExplanationDao
 import com.bookwise.data.local.dao.ReadingProgressDao
+import com.bookwise.data.local.entity.ExplanationEntity
 import com.bookwise.data.local.entity.BookEntity
 import com.bookwise.data.local.entity.ReadingProgressEntity
 
 @androidx.room.Database(
-    entities = [BookEntity::class, ReadingProgressEntity::class],
-    version = 1,
+    entities = [BookEntity::class, ReadingProgressEntity::class, ExplanationEntity::class],
+    version = 2,
     exportSchema = false
 )
 abstract class BookwiseDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao
+    abstract fun explanationDao(): ExplanationDao
     abstract fun readingProgressDao(): ReadingProgressDao
 
     companion object {
