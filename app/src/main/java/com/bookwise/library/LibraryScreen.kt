@@ -112,6 +112,7 @@ fun LibraryScreen(
             is LibraryUiState.Ready -> BookListContent(
                 modifier = Modifier.padding(padding),
                 books = state.books,
+                progress = state.progress,
                 onBookClick = onBookClick,
                 onDeleteClick = { book ->
                     viewModel.remove(book)
@@ -184,6 +185,7 @@ private fun LibraryEmptyContent(
 @Composable
 private fun BookListContent(
     books: List<Book>,
+    progress: Map<String, Double> = emptyMap(),
     onBookClick: (Book) -> Unit,
     onDeleteClick: (Book) -> Unit,
     onImportClick: () -> Unit,
@@ -198,6 +200,7 @@ private fun BookListContent(
             items(books, key = { it.id }) { book ->
                 BookRow(
                     book = book,
+                    progressPercent = progress[book.id]?.let { (it * 100).toInt() },
                     onClick = { onBookClick(book) },
                     onDeleteClick = { onDeleteClick(book) }
                 )
@@ -218,6 +221,7 @@ private fun BookListContent(
 @Composable
 private fun BookRow(
     book: Book,
+    progressPercent: Int? = null,
     onClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
@@ -245,7 +249,7 @@ private fun BookRow(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = stringResource(R.string.library_progress, formatProgress(book)),
+                    text = stringResource(R.string.library_progress, formatProgress(book, progressPercent)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -292,7 +296,9 @@ private fun BookCover(coverPath: String?, title: String) {
     }
 }
 
-private fun formatProgress(book: Book): String = "Not started"
+private fun formatProgress(book: Book, progressPercent: Int? = null): String =
+    if (progressPercent != null && progressPercent > 0) "$progressPercent% done"
+    else "Not started"
 
 @Composable
 internal fun PlaceholderContent(

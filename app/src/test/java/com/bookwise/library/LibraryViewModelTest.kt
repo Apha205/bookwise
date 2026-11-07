@@ -24,7 +24,7 @@ class LibraryViewModelTest {
 
     @Test
     fun initialState_isEmpty() = runTest {
-        val vm = LibraryViewModel(repository, handler)
+        val vm = LibraryViewModel(repository, handler, com.bookwise.data.repository.ReadingRepository(repository))
         // uiState uses StateFlow with WhileSubscribed — initial value is Loading, not Empty
         assertTrue(vm.uiState.value is LibraryUiState.Loading || vm.uiState.value is LibraryUiState.Empty)
     }
@@ -36,7 +36,7 @@ class LibraryViewModelTest {
         val testDispatcher = UnconfinedTestDispatcher()
         Dispatchers.setMain(testDispatcher)
         try {
-            val vm = LibraryViewModel(repository, handler)
+            val vm = LibraryViewModel(repository, handler, com.bookwise.data.repository.ReadingRepository(repository))
             vm.importPicked(uriString)
             testDispatcher.scheduler.advanceUntilIdle()
             assertEquals("Already in library", vm.errorMessage.value)
@@ -82,6 +82,7 @@ class FakeReadingProgressDao : com.bookwise.data.local.dao.ReadingProgressDao {
     override suspend fun getForBook(bookId: String) = map[bookId]
     override suspend fun upsert(entity: com.bookwise.data.local.entity.ReadingProgressEntity) { map[entity.bookId] = entity }
     override suspend fun deleteForBook(bookId: String) { map.remove(bookId) }
+    override fun observeAll() = kotlinx.coroutines.flow.flowOf(map.values.toList())
 }
 
 class FakeImportHandler : BookImportHandler(

@@ -3,7 +3,10 @@ package com.bookwise.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bookwise.data.repository.BookRepository
+import com.bookwise.data.repository.ReadingRepository
 import com.bookwise.domain.model.Book
+import com.bookwise.domain.model.ReadingProgress
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +17,7 @@ import kotlinx.coroutines.launch
 sealed interface LibraryUiState {
     data object Loading : LibraryUiState
     data object Empty : LibraryUiState
-    data class Ready(val books: List<Book>) : LibraryUiState
+    data class Ready(val books: List<Book>, val progress: Map<String, Double> = emptyMap()) : LibraryUiState
     data class Error(val message: String, val books: List<Book> = emptyList()) : LibraryUiState
 }
 
@@ -25,23 +28,25 @@ sealed interface LibraryEvent {
 
 class LibraryViewModel(
     private val bookRepository: BookRepository,
-    private val importHandler: BookImportHandler
+    private val importHandler: BookImportHandler,
+    private val readingRepository: ReadingRepository
 ) : ViewModel() {
 
     private val _isImporting = MutableStateFlow(false)
     val isImporting: StateFlow<Boolean> = _isImporting
 
-    val uiState: StateFlow<LibraryUiState> = bookRepository.observeBooks()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-        .let { books ->
-            combine(books, _isImporting) { list, importing ->
-                when {
-                    importing -> LibraryUiState.Loading
-                    list.isEmpty() -> LibraryUiState.Empty
-                    else -> LibraryUiState.Ready(list)
-                }
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LibraryUiState.Loading)
+    val uiState: StateFlow<LibraryUiState> = combine(
+        bookRepository.observeBooks() as Flow<List<Book>>,
+        readingRepository.observeAllProgress() as Flow<List<ReadingProgress>>,
+        _isImporting
+    ) { books, progressList, importing ->
+        val progressMap = progressList.associate { it.bookId to (it.totalProgress ?: 0.0) }
+        when {
+            importing -> LibraryUiState.Loading
+            books.isEmpty() -> LibraryUiState.Empty
+            else -> LibraryUiState.Ready(books, progressMap)
         }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LibraryUiState.Loading)
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage

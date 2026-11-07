@@ -54,6 +54,7 @@ private class FakeBookDao2 : com.bookwise.data.local.dao.BookDao {
 private class FakeProgressDao2 : com.bookwise.data.local.dao.ReadingProgressDao {
     private val map = mutableMapOf<String, com.bookwise.data.local.entity.ReadingProgressEntity>()
     override suspend fun getForBook(bookId: String) = map[bookId]
+    override fun observeAll() = kotlinx.coroutines.flow.flowOf(map.values.toList())
     override suspend fun upsert(entity: com.bookwise.data.local.entity.ReadingProgressEntity) { map[entity.bookId] = entity }
     override suspend fun deleteForBook(bookId: String) { map.remove(bookId) }
 }

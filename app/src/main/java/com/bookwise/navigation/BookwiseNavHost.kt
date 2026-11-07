@@ -42,7 +42,7 @@ fun BookwiseNavHost() {
                     @Suppress("UNCHECKED_CAST")
                     override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                         require(modelClass.isAssignableFrom(LibraryViewModel::class.java))
-                        return LibraryViewModel(app.bookRepository, app.importHandler) as T
+                        return LibraryViewModel(app.bookRepository, app.importHandler, app.readingRepository) as T
                     }
                 })
             )

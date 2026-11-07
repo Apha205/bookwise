@@ -16,6 +16,9 @@ open class BookRepository(
 ) {
     open fun observeBooks(): Flow<List<Book>> = bookDao.observeAll().map { it.map(::toDomain) }
 
+    open fun observeAllProgress(): Flow<List<ReadingProgress>> =
+        readingProgressDao.observeAll().map { it.map(::toDomain) }
+
     suspend fun getById(bookId: String): Book? = bookDao.getById(bookId)?.let(::toDomain)
 
     suspend fun insert(book: Book): Boolean {
