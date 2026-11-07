@@ -70,7 +70,8 @@ fun BookwiseNavHost() {
                 viewModel = viewModel(factory = SettingsViewModel.factory(
                     providerRepository = app.providerRepository,
                     chatRepository = app.chatRepository,
-                    secureKeyRepository = app.secureKeyRepository
+                    secureKeyRepository = app.secureKeyRepository,
+                    settingsRepository = app.settingsRepository
                 ))
             )
         }

@@ -20,6 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.bookwise.R
 
@@ -37,7 +41,10 @@ fun ReaderControls(
         Slider(
             value = progression,
             onValueChange = onProgressionChange,
-            modifier = Modifier.fillMaxWidth().height(32.dp)
+            modifier = Modifier.fillMaxWidth().height(32.dp).semantics {
+                contentDescription = "Reading progress"
+                stateDescription = "${(progression * 100).toInt()} percent"
+            }
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -46,11 +53,11 @@ fun ReaderControls(
         ) {
             TextButton(onClick = onPrevious) { Text(text = stringResource(R.string.reader_previous)) }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { onZoomChange(zoomPercent - 10) }) {
+                IconButton(onClick = { onZoomChange(zoomPercent - 10) }, modifier = Modifier.semantics { stateDescription = "$zoomPercent percent" }) {
                     Icon(Icons.Filled.Remove, contentDescription = "Zoom out")
                 }
                 Text(text = "$zoomPercent%", style = MaterialTheme.typography.bodySmall)
-                IconButton(onClick = { onZoomChange(zoomPercent + 10) }) {
+                IconButton(onClick = { onZoomChange(zoomPercent + 10) }, modifier = Modifier.semantics { stateDescription = "$zoomPercent percent" }) {
                     Icon(Icons.Filled.Add, contentDescription = "Zoom in")
                 }
             }

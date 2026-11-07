@@ -7,7 +7,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import com.bookwise.data.preferences.AppPreferences
 import com.bookwise.navigation.BookwiseNavHost
 import com.bookwise.ui.theme.BookwiseTheme
 
@@ -27,8 +30,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val appPreferences = AppPreferences(this)
         setContent {
-            BookwiseTheme {
+            val themeMode by appPreferences.themeModeFlow().collectAsState(initial = "system")
+            val darkTheme = themeMode == "dark"
+            BookwiseTheme(darkTheme = darkTheme) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     BookwiseNavHost()
                 }

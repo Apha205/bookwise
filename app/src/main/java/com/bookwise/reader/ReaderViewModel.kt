@@ -114,11 +114,14 @@ class ReaderViewModel(
             }
 
             val fontScale = try { app.settingsRepository.fontScaleFlow().first() } catch (e: Exception) { 1.0f }
+            val zoomLevel = try { app.settingsRepository.zoomLevelFlow().first() } catch (e: Exception) { 1.0f }
+            _fontScale.value = fontScale
+            _zoomPercent.value = (zoomLevel * 100).toInt().coerceIn(80, 200)
             val initialSettings = ReflowableWebSettings(
                 backgroundColor = ReflowableWebPreferences.LightTheme.backgroundColor!!,
                 columnCount = null,
                 fontFamily = null,
-                fontSize = fontScale.toDouble(),
+                fontSize = fontScale.toDouble() * zoomLevel.toDouble(),
                 fontWeight = null,
                 hyphens = null,
                 imageFilter = null,
@@ -223,8 +226,30 @@ class ReaderViewModel(
         _selectedLocatorJson.value = locator.toJSON().toString()
     }
 
+    private val _fontScale = MutableStateFlow(1.0f)
     private val _zoomPercent = MutableStateFlow(100)
     val zoomPercent: StateFlow<Int> = _zoomPercent.asStateFlow()
+
+    private fun applyFontSize() {
+        val ctrl = renditionState?.controller ?: return
+        ctrl.settings = ctrl.settings.copy(fontSize = _fontScale.value.toDouble() * (_zoomPercent.value / 100.0))
+    }
+
+    init {
+        viewModelScope.launch { loadBook() }
+        viewModelScope.launch {
+            app.settingsRepository.fontScaleFlow().collect { scale ->
+                _fontScale.value = scale
+                applyFontSize()
+            }
+        }
+        viewModelScope.launch {
+            app.settingsRepository.zoomLevelFlow().collect { level ->
+                _zoomPercent.value = (level * 100).toInt().coerceIn(80, 200)
+                applyFontSize()
+            }
+        }
+    }
 
     fun tryAgain() {
         viewModelScope.launch { loadBook() }
@@ -233,8 +258,8 @@ class ReaderViewModel(
     fun setZoom(percent: Int) {
         val clamped = percent.coerceIn(80, 200)
         _zoomPercent.value = clamped
-        val ctrl = renditionState?.controller ?: return
-        ctrl.settings = ctrl.settings.copy(fontSize = clamped / 100.0)
+        applyFontSize()
+        viewModelScope.launch { app.settingsRepository.setZoomLevel(clamped / 100.0f) }
     }
 
     fun clearSelection() {

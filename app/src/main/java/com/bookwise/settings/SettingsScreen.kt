@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -133,6 +134,32 @@ fun SettingsScreen(
 
             state.testResult?.let {
                 Text(text = it, style = MaterialTheme.typography.bodyMedium)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "Reading", style = MaterialTheme.typography.titleMedium)
+
+            Text(text = "Font size: ${(state.fontScale * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+            Slider(
+                value = state.fontScale,
+                onValueChange = { viewModel.updateFontScale(it) },
+                valueRange = 0.8f..2.0f,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { viewModel.updateThemeMode("system") },
+                    enabled = state.themeMode != "system"
+                ) { Text("System") }
+                OutlinedButton(
+                    onClick = { viewModel.updateThemeMode("light") },
+                    enabled = state.themeMode != "light"
+                ) { Text("Light") }
+                OutlinedButton(
+                    onClick = { viewModel.updateThemeMode("dark") },
+                    enabled = state.themeMode != "dark"
+                ) { Text("Dark") }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

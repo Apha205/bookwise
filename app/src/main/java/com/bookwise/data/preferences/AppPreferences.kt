@@ -20,6 +20,7 @@ class AppPreferences(private val context: Context) {
     private val modelId = stringPreferencesKey("model_id")
     private val endpointOverride = stringPreferencesKey("endpoint_override")
     private val hasKey = booleanPreferencesKey("has_api_key")
+    private val zoomLevel = floatPreferencesKey("zoom_level")
     private val providerConfigJson = stringPreferencesKey("provider_config_json")
 
     fun fontScaleFlow(): Flow<Float> = context.preferencesDataStore.data.map { it[fontScale] ?: 1.0f }
@@ -28,6 +29,7 @@ class AppPreferences(private val context: Context) {
     fun modelFlow(): Flow<String?> = context.preferencesDataStore.data.map { it[modelId] }
     fun endpointFlow(): Flow<String?> = context.preferencesDataStore.data.map { it[endpointOverride] }
     fun hasKeyFlow(): Flow<Boolean> = context.preferencesDataStore.data.map { it[hasKey] ?: false }
+    fun zoomLevelFlow(): Flow<Float> = context.preferencesDataStore.data.map { it[zoomLevel] ?: 1.0f }
 
     suspend fun setFontScale(value: Float) {
         require(value in 0.8f..2.0f) { "Font scale out of range" }
@@ -48,6 +50,7 @@ class AppPreferences(private val context: Context) {
     suspend fun setProviderConfigJson(value: String?) = context.preferencesDataStore.edit {
         if (value != null) it[providerConfigJson] = value else it.remove(providerConfigJson)
     }
+    suspend fun setZoomLevel(value: Float) = context.preferencesDataStore.edit { it[zoomLevel] = value.coerceIn(0.8f, 2.0f) }
 }
 
 class SettingsRepository(private val preferences: AppPreferences) {
@@ -57,11 +60,13 @@ class SettingsRepository(private val preferences: AppPreferences) {
     fun modelFlow(): Flow<String?> = preferences.modelFlow()
     fun endpointFlow(): Flow<String?> = preferences.endpointFlow()
     fun hasKeyFlow(): Flow<Boolean> = preferences.hasKeyFlow()
+    fun zoomLevelFlow(): Flow<Float> = preferences.zoomLevelFlow()
+    fun providerConfigJsonFlow(): Flow<String?> = preferences.providerConfigJsonFlow()
 
     suspend fun setFontScale(value: Float) = preferences.setFontScale(value)
     suspend fun setThemeMode(value: String) = preferences.setThemeMode(value)
+    suspend fun setZoomLevel(value: Float) = preferences.setZoomLevel(value)
+    suspend fun setProviderConfigJson(value: String?) = preferences.setProviderConfigJson(value)
     suspend fun setProvider(provider: String?, model: String?, endpoint: String?) =
         preferences.setProvider(provider, model, endpoint)
-    fun providerConfigJsonFlow(): Flow<String?> = preferences.providerConfigJsonFlow()
-    suspend fun setProviderConfigJson(value: String?) = preferences.setProviderConfigJson(value)
 }

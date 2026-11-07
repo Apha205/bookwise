@@ -22,6 +22,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -86,8 +89,8 @@ fun TutorSheet(
             when (currentState) {
                 TutorUiState.Idle -> {}
                 TutorUiState.Loading -> CircularProgressIndicator()
-                is TutorUiState.Streaming -> Text(text = currentState.text, style = MaterialTheme.typography.bodyMedium)
-                is TutorUiState.Done -> Text(text = currentState.text, style = MaterialTheme.typography.bodyMedium)
+                is TutorUiState.Streaming -> Text(text = currentState.text, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }, style = MaterialTheme.typography.bodyMedium)
+                is TutorUiState.Done -> Text(text = currentState.text, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }, style = MaterialTheme.typography.bodyMedium)
                 is TutorUiState.Error -> Text(text = currentState.message, color = MaterialTheme.colorScheme.error)
             }
         }
