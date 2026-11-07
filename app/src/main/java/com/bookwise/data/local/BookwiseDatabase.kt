@@ -7,14 +7,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.bookwise.data.local.dao.BookDao
 import com.bookwise.data.local.dao.ExplanationDao
 import com.bookwise.data.local.dao.ReadingProgressDao
-import com.bookwise.data.local.entity.ExplanationEntity
 import com.bookwise.data.local.entity.BookEntity
+import com.bookwise.data.local.entity.ExplanationEntity
 import com.bookwise.data.local.entity.ReadingProgressEntity
+import com.bookwise.data.local.migrations.Migrations
 
 @androidx.room.Database(
     entities = [BookEntity::class, ReadingProgressEntity::class, ExplanationEntity::class],
     version = 2,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class BookwiseDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao
@@ -34,7 +35,8 @@ abstract class BookwiseDatabase : RoomDatabase() {
                     BookwiseDatabase::class.java,
                     DB_NAME
                 )
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(Migrations.MIGRATION_1_2)
+                    .apply { if (com.bookwise.BuildConfig.DEBUG) fallbackToDestructiveMigration() }
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

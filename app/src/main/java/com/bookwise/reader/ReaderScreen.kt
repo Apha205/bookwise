@@ -7,6 +7,7 @@ import android.view.Menu
 import android.view.MenuItem
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,9 +44,9 @@ import kotlinx.coroutines.launch
 import org.readium.navigator.web.reflowable.ReflowableWebRendition
 import org.readium.navigator.web.reflowable.ReflowableWebRenditionController
 import org.readium.r2.shared.ExperimentalReadiumApi
+import com.bookwise.R
 import com.bookwise.tutor.TutorSheet
 import com.bookwise.tutor.TutorViewModel
-import com.bookwise.R
 
 private const val MENU_ASK_TUTOR = 1001
 
@@ -58,12 +60,13 @@ fun ReaderScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val totalProgress by viewModel.totalProgress.collectAsStateWithLifecycle()
     val zoomPercent by viewModel.zoomPercent.collectAsStateWithLifecycle()
+    val isFixedLayout by viewModel.isFixedLayout.collectAsStateWithLifecycle()
     val selectedText by viewModel.selectedText.collectAsStateWithLifecycle()
     val selectedLocatorJson by viewModel.selectedLocatorJson.collectAsStateWithLifecycle()
     var showToc by remember { mutableStateOf(false) }
     var showTutor by remember { mutableStateOf(false) }
-    val askTutorLabel = stringResource(R.string.reader_select_ask_tutor)
     val scope = rememberCoroutineScope()
+    val askTutorLabel = stringResource(R.string.reader_select_ask_tutor)
 
     Scaffold(
         topBar = {
@@ -109,76 +112,91 @@ fun ReaderScreen(
                 onBack = onBackClick
             )
             is ReaderUiState.Ready -> {
-                Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-                    ReflowableWebRendition(
-                        state = state.renditionState,
-                        modifier = Modifier.weight(1f),
-                        textSelectionActionModeCallback = object : ActionMode.Callback {
-                            override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
-                                menu?.add(0, MENU_ASK_TUTOR, 0, askTutorLabel)
-                                return true
+                if (isFixedLayout) {
+                    Box(
+                        modifier = Modifier.padding(padding).fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(text = "Fixed-layout EPUB", style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.padding(8.dp))
+                            Text(text = "This book uses a fixed layout (comics, picture books) which is not yet supported in the reader.", style = MaterialTheme.typography.bodyMedium)
+                            Spacer(modifier = Modifier.padding(12.dp))
+                            Button(onClick = onBackClick) {
+                                Text(text = stringResource(R.string.reader_back))
                             }
-                            override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean = false
-                            override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
-                                return when (item?.itemId) {
-                                    MENU_ASK_TUTOR -> {
-                                        scope.launch {
-                                            viewModel.captureSelection()
-                                            showTutor = true
-                                        }
-                                        mode?.finish()
-                                        true
-                                    }
-                                    else -> false
-                                }
-                            }
-                            override fun onDestroyActionMode(mode: ActionMode?) {}
                         }
-                    )
-                    ReaderControls(
-                        progression = (totalProgress ?: state.totalProgress ?: 0.0).toFloat(),
-                        zoomPercent = zoomPercent,
-                        onProgressionChange = { viewModel.goToProgression(it) },
-                        onZoomChange = { viewModel.setZoom(it) },
-                        onPrevious = {
-                            val ctrl = state.renditionState.controller
-                            if (ctrl != null) scope.launch { ctrl.moveBackward() }
-                        },
-                        onNext = {
-                            val ctrl = state.renditionState.controller
-                            if (ctrl != null) scope.launch { ctrl.moveForward() }
-                        },
-                        onOpenToc = { showToc = true }
-                    )
-                }
-                if (showToc) {
-                    TableOfContentsSheet(
-                        entries = state.tocEntries,
-                        onSelect = { entry ->
-                            viewModel.goTo(entry.url)
-                            showToc = false
-                        },
-                        onDismiss = { showToc = false }
-                    )
-                }
-
-                if (showTutor && selectedText != null) {
-                    TutorSheet(
-                        bookId = state.book.id,
-                        passage = selectedText!!,
-                        locatorJson = selectedLocatorJson,
-                        viewModel = tutorViewModel,
-                        onDismiss = { showTutor = false },
-                        onSave = { }
-                    )
-                }
-
-                LaunchedEffect(state.renditionState) {
-                    while (state.renditionState.controller == null) {
-                        delay(50)
                     }
-                    val controller = state.renditionState.controller as ReflowableWebRenditionController
-                    viewModel.onControllerAvailable(controller)
+                } else {
+                    Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+                        ReflowableWebRendition(
+                            state = state.renditionState,
+                            modifier = Modifier.weight(1f),
+                            textSelectionActionModeCallback = object : ActionMode.Callback {
+                                override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
+                                    menu?.add(0, MENU_ASK_TUTOR, 0, askTutorLabel)
+                                    return true
+                                }
+                                override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean = false
+                                override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
+                                    return when (item?.itemId) {
+                                        MENU_ASK_TUTOR -> {
+                                            scope.launch {
+                                                viewModel.captureSelection()
+                                                showTutor = true
+                                            }
+                                            mode?.finish()
+                                            true
+                                        }
+                                        else -> false
+                                    }
+                                }
+                                override fun onDestroyActionMode(mode: ActionMode?) {}
+                            }
+                        )
+                        ReaderControls(
+                            progression = (totalProgress ?: state.totalProgress ?: 0.0).toFloat(),
+                            zoomPercent = zoomPercent,
+                            onProgressionChange = { viewModel.goToProgression(it) },
+                            onZoomChange = { viewModel.setZoom(it) },
+                            onPrevious = {
+                                val ctrl = state.renditionState.controller
+                                if (ctrl != null) scope.launch { ctrl.moveBackward() }
+                            },
+                            onNext = {
+                                val ctrl = state.renditionState.controller
+                                if (ctrl != null) scope.launch { ctrl.moveForward() }
+                            },
+                            onOpenToc = { showToc = true }
+                        )
+                    }
+                    if (showToc) {
+                        TableOfContentsSheet(
+                            entries = state.tocEntries,
+                            onSelect = { entry ->
+                                viewModel.goTo(entry.url)
+                                showToc = false
+                            },
+                            onDismiss = { showToc = false }
+                        )
+                    }
+                    if (showTutor && selectedText != null) {
+                        TutorSheet(
+                            bookId = state.book.id,
+                            passage = selectedText!!,
+                            locatorJson = selectedLocatorJson,
+                            viewModel = tutorViewModel,
+                            onDismiss = { showTutor = false },
+                            onSave = { }
+                        )
+                    }
+                    LaunchedEffect(state.renditionState) {
+                        while (state.renditionState.controller == null) {
+                            delay(50)
+                        }
+                        val controller = state.renditionState.controller as ReflowableWebRenditionController
+                        viewModel.onControllerAvailable(controller)
+                    }
                 }
             }
         }
@@ -197,13 +215,13 @@ private fun ReaderErrorContent(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = stringResource(R.string.reader_error_title))
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(8.dp))
+            Spacer(modifier = Modifier.padding(8.dp))
             Text(text = stringResource(R.string.reader_error_message))
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(12.dp))
+            Spacer(modifier = Modifier.padding(12.dp))
             Button(onClick = onRetry) {
                 Text(text = stringResource(R.string.reader_retry))
             }
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(8.dp))
+            Spacer(modifier = Modifier.padding(8.dp))
             TextButton(onClick = onBack) {
                 Text(text = stringResource(R.string.reader_back))
             }

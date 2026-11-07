@@ -63,6 +63,9 @@ class ReaderViewModel(
     private val _uiState = MutableStateFlow<ReaderUiState>(ReaderUiState.Loading)
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
 
+    private val _isFixedLayout = MutableStateFlow(false)
+    val isFixedLayout: StateFlow<Boolean> = _isFixedLayout.asStateFlow()
+
     private val _totalProgress = MutableStateFlow<Double?>(null)
     val totalProgress: StateFlow<Double?> = _totalProgress.asStateFlow()
 
@@ -96,6 +99,7 @@ class ReaderViewModel(
                 return
             }
             publication = pub
+            _isFixedLayout.value = pub.metadata.layout?.value == "fixed"
 
             val savedProgress = readingRepository.getProgress(bookId)
             val initialLocator = savedProgress?.locatorJson?.let { json ->
