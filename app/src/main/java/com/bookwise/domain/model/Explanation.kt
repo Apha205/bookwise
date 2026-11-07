@@ -12,9 +12,5 @@ data class Explanation(
 )
 
 enum class TutorAction(val label: String) {
-    EXPLAIN("Explain"),
-    TRANSLATE("Translate"),
-    DEFINE("Define"),
-    SUMMARIZE("Summarize"),
-    ASK("Ask")
+    EXPLAIN("Explain")
 }

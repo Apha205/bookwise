@@ -39,9 +39,7 @@ fun TutorSheet(
     onSave: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var selectedAction by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(TutorAction.EXPLAIN) }
     var question by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
-    var language by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("English") }
 
     ModalBottomSheet(onDismissRequest = { viewModel.reset(); onDismiss() }) {
         Column(
@@ -54,31 +52,14 @@ fun TutorSheet(
             Text(text = "Tutor", style = MaterialTheme.typography.titleLarge)
             Text(text = "\u201C${passage.take(120)}\u2026\u201D", style = MaterialTheme.typography.bodySmall)
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TutorAction.entries.forEach { action ->
-                    AssistChip(
-                        onClick = { selectedAction = action },
-                        label = { Text(action.label) }
-                    )
-                }
-            }
-
-            if (selectedAction == TutorAction.ASK) {
-                OutlinedTextField(
-                    value = question,
-                    onValueChange = { question = it },
-                    label = { Text("Your question") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            if (selectedAction == TutorAction.TRANSLATE) {
-                OutlinedTextField(
-                    value = language,
-                    onValueChange = { language = it },
-                    label = { Text("Target language") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            OutlinedTextField(
+                value = question,
+                onValueChange = { question = it },
+                label = { Text("What would you like to know? (optional)") },
+                placeholder = { Text("e.g. Explain this simply, What does this mean?") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2
+            )
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
@@ -87,9 +68,8 @@ fun TutorSheet(
                             bookId = bookId,
                             passage = passage,
                             locatorJson = locatorJson,
-                            action = selectedAction,
-                            question = if (selectedAction == TutorAction.ASK) question else null,
-                            targetLanguage = if (selectedAction == TutorAction.TRANSLATE) language else null
+                            action = TutorAction.EXPLAIN,
+                            question = question.ifBlank { null }
                         )
                     },
                     enabled = state is TutorUiState.Idle || state is TutorUiState.Done || state is TutorUiState.Error

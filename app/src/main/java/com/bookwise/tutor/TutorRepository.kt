@@ -51,12 +51,10 @@ class TutorRepository(
         targetLanguage: String?
     ): List<com.bookwise.data.provider.ChatMessage> {
         val trimmedPassage = if (passage.length > 2000) passage.take(2000) + "…" else passage
-        val system = when (action) {
-            TutorAction.EXPLAIN -> "You are a helpful reading tutor. Explain the given passage from a book in clear, accessible terms. Keep it concise."
-            TutorAction.TRANSLATE -> "You are a translator. Translate the given passage to ${targetLanguage ?: "English"}. Output only the translation."
-            TutorAction.DEFINE -> "You are a dictionary assistant. Define the key terms and concepts in the given passage concisely."
-            TutorAction.SUMMARIZE -> "You are a summarizer. Summarize the given passage in 2-3 sentences."
-            TutorAction.ASK -> "You are a helpful reading tutor. Answer the user's question about the given passage."
+        val system = if (question.isNullOrBlank()) {
+            "You are a helpful reading tutor. Explain the given passage from a book in clear, accessible terms. Keep it concise."
+        } else {
+            "You are a helpful reading tutor. The user asks: \"$question\". Answer based on the given passage. Keep it concise."
         }
         val userContent = buildString {
             append("Passage:\n\"\"\"\n").append(trimmedPassage).append("\n\"\"\"\n")

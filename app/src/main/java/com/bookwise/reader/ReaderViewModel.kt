@@ -223,8 +223,18 @@ class ReaderViewModel(
         _selectedLocatorJson.value = locator.toJSON().toString()
     }
 
+    private val _zoomPercent = MutableStateFlow(100)
+    val zoomPercent: StateFlow<Int> = _zoomPercent.asStateFlow()
+
     fun tryAgain() {
         viewModelScope.launch { loadBook() }
+    }
+
+    fun setZoom(percent: Int) {
+        val clamped = percent.coerceIn(80, 200)
+        _zoomPercent.value = clamped
+        val ctrl = renditionState?.controller ?: return
+        ctrl.settings = ctrl.settings.copy(fontSize = clamped / 100.0)
     }
 
     fun clearSelection() {

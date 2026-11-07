@@ -57,6 +57,7 @@ fun ReaderScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val totalProgress by viewModel.totalProgress.collectAsStateWithLifecycle()
+    val zoomPercent by viewModel.zoomPercent.collectAsStateWithLifecycle()
     val selectedText by viewModel.selectedText.collectAsStateWithLifecycle()
     val selectedLocatorJson by viewModel.selectedLocatorJson.collectAsStateWithLifecycle()
     var showToc by remember { mutableStateOf(false) }
@@ -121,7 +122,10 @@ fun ReaderScreen(
                             override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
                                 return when (item?.itemId) {
                                     MENU_ASK_TUTOR -> {
-                                        scope.launch { viewModel.captureSelection() }
+                                        scope.launch {
+                                            viewModel.captureSelection()
+                                            showTutor = true
+                                        }
                                         mode?.finish()
                                         true
                                     }
@@ -133,7 +137,9 @@ fun ReaderScreen(
                     )
                     ReaderControls(
                         progression = (totalProgress ?: state.totalProgress ?: 0.0).toFloat(),
+                        zoomPercent = zoomPercent,
                         onProgressionChange = { viewModel.goToProgression(it) },
+                        onZoomChange = { viewModel.setZoom(it) },
                         onPrevious = {
                             val ctrl = state.renditionState.controller
                             if (ctrl != null) scope.launch { ctrl.moveBackward() }
@@ -144,24 +150,6 @@ fun ReaderScreen(
                         },
                         onOpenToc = { showToc = true }
                     )
-                    selectedText?.let { quote ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth().padding(8.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(text = stringResource(R.string.reader_selection_preview), style = MaterialTheme.typography.labelMedium)
-                                androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(4.dp))
-                                Text(text = "\u201C$quote\u201D", style = MaterialTheme.typography.bodyMedium)
-                                androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(8.dp))
-                                TextButton(onClick = { viewModel.clearSelection() }) {
-                                    Text(text = stringResource(R.string.reader_selection_clear))
-                                }
-                                TextButton(onClick = { showTutor = true }) {
-                                    Text(text = stringResource(R.string.reader_select_ask_tutor))
-                                }
-                            }
-                        }
-                    }
                 }
                 if (showToc) {
                     TableOfContentsSheet(

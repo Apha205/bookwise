@@ -7,15 +7,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -23,35 +25,42 @@ import com.bookwise.R
 
 @Composable
 fun ReaderControls(
-    progression: Float?,
+    progression: Float,
+    zoomPercent: Int = 100,
     onProgressionChange: (Float) -> Unit,
+    onZoomChange: (Int) -> Unit = {},
     onPrevious: () -> Unit,
     onNext: () -> Unit,
-    onOpenToc: () -> Unit,
-    modifier: Modifier = Modifier
+    onOpenToc: () -> Unit
 ) {
-    var sliderFraction by remember(progression) { mutableFloatStateOf(progression ?: 0f) }
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        Text(text = stringResource(R.string.reader_progress, (sliderFraction * 100).toInt()))
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
         Slider(
-            value = sliderFraction,
-            onValueChange = { sliderFraction = it },
-            onValueChangeFinished = { onProgressionChange(sliderFraction) },
-            modifier = Modifier.fillMaxWidth()
+            value = progression,
+            onValueChange = onProgressionChange,
+            modifier = Modifier.fillMaxWidth().height(32.dp)
         )
-        Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(onClick = onPrevious) { Text(text = stringResource(R.string.reader_previous)) }
-            Button(onClick = onOpenToc) { Text(text = stringResource(R.string.reader_contents)) }
-            Button(onClick = onNext) { Text(text = stringResource(R.string.reader_next)) }
+            TextButton(onClick = onPrevious) { Text(text = stringResource(R.string.reader_previous)) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { onZoomChange(zoomPercent - 10) }) {
+                    Icon(Icons.Filled.Remove, contentDescription = "Zoom out")
+                }
+                Text(text = "$zoomPercent%", style = MaterialTheme.typography.bodySmall)
+                IconButton(onClick = { onZoomChange(zoomPercent + 10) }) {
+                    Icon(Icons.Filled.Add, contentDescription = "Zoom in")
+                }
+            }
+            TextButton(onClick = onNext) { Text(text = stringResource(R.string.reader_next)) }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            TextButton(onClick = onOpenToc) { Text(text = stringResource(R.string.reader_contents)) }
         }
     }
 }
