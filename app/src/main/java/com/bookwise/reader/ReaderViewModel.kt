@@ -27,6 +27,8 @@ import org.readium.navigator.web.reflowable.preferences.ReflowableWebPreferences
 import org.readium.navigator.web.reflowable.preferences.ReflowableWebSettings
 import org.readium.r2.navigator.preferences.ReadingProgression
 import androidx.compose.runtime.snapshotFlow
+import org.readium.r2.navigator.Decoration
+import org.readium.r2.navigator.DecorableNavigator
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.publication.services.locateProgression
@@ -264,6 +266,25 @@ class ReaderViewModel(
         _zoomPercent.value = clamped
         applyFontSize()
         viewModelScope.launch { app.settingsRepository.setZoomLevel(clamped / 100.0f) }
+    }
+
+    suspend fun applyHighlightDecoration(locatorJson: String?) {
+        val ctrl = renditionState?.controller ?: return
+        val json = locatorJson ?: return
+        val locator = try { Locator.fromJSON(org.json.JSONObject(json)) } catch (e: Exception) { return }
+        if (locator == null) return
+        val decorable = ctrl as? DecorableNavigator ?: return
+        val decoration = Decoration(
+            id = "tutor-selection",
+            locator = locator,
+            style = Decoration.Style.Highlight(tint = 0x33FFFF00, isActive = true)
+        )
+        decorable.applyDecorations(listOf(decoration), "tutor-selection")
+    }
+    suspend fun clearHighlightDecoration() {
+        val ctrl = renditionState?.controller ?: return
+        val decorable = ctrl as? DecorableNavigator ?: return
+        decorable.applyDecorations(emptyList(), "tutor-selection")
     }
 
     fun clearSelection() {

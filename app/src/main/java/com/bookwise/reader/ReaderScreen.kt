@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
@@ -148,12 +149,12 @@ fun ReaderScreen(
                                             val passage = viewModel.selectedText.value ?: return@launch
                                             val locator = viewModel.selectedLocatorJson.value
                                             tutorViewModel.init(passage, state.book.id, locator)
+                                            viewModel.applyHighlightDecoration(locator)
                                             showTutor = true
                                         }
-                                        mode?.finish()
                                         true
                                     }
-                                        else -> false
+                                    else -> false
                                     }
                                 }
                                 override fun onDestroyActionMode(mode: ActionMode?) {}
@@ -189,13 +190,23 @@ fun ReaderScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.4f)),
+                            .background(Color.Black.copy(alpha = 0.4f))
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        awaitPointerEvent().changes.forEach { it.consume() }
+                                    }
+                                }
+                            },
                         contentAlignment = Alignment.BottomCenter
                     ) {
                         TutorSheet(
                             passage = selectedText!!,
                             viewModel = tutorViewModel,
-                            onDismiss = { showTutor = false }
+                            onDismiss = {
+                                scope.launch { viewModel.clearHighlightDecoration() }
+                                showTutor = false
+                            }
                         )
                     }
                 }
