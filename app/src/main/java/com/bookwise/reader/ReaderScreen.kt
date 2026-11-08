@@ -5,6 +5,7 @@ package com.bookwise.reader
 import android.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -37,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
@@ -140,14 +142,17 @@ fun ReaderScreen(
                                 override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean = false
                                 override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
                                     return when (item?.itemId) {
-                                        MENU_ASK_TUTOR -> {
-                                            scope.launch {
-                                                viewModel.captureSelection()
-                                                showTutor = true
-                                            }
-                                            mode?.finish()
-                                            true
+                                    MENU_ASK_TUTOR -> {
+                                        scope.launch {
+                                            viewModel.captureSelection()
+                                            val passage = viewModel.selectedText.value ?: return@launch
+                                            val locator = viewModel.selectedLocatorJson.value
+                                            tutorViewModel.init(passage, state.book.id, locator)
+                                            showTutor = true
                                         }
+                                        mode?.finish()
+                                        true
+                                    }
                                         else -> false
                                     }
                                 }
@@ -180,16 +185,20 @@ fun ReaderScreen(
                             onDismiss = { showToc = false }
                         )
                     }
-                    if (showTutor && selectedText != null) {
+                if (showTutor && selectedText != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.4f)),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
                         TutorSheet(
-                            bookId = state.book.id,
                             passage = selectedText!!,
-                            locatorJson = selectedLocatorJson,
                             viewModel = tutorViewModel,
-                            onDismiss = { showTutor = false },
-                            onSave = { }
+                            onDismiss = { showTutor = false }
                         )
                     }
+                }
                     LaunchedEffect(state.renditionState) {
                         while (state.renditionState.controller == null) {
                             delay(50)
