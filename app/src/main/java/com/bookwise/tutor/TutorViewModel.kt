@@ -3,6 +3,10 @@ package com.bookwise.tutor
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.bookwise.data.provider.ChatMessage
+import com.bookwise.data.provider.ChatRepository
+import com.bookwise.data.provider.ProviderRepository
+import com.bookwise.data.repository.ExplanationRepository
 import com.bookwise.domain.model.Explanation
 import com.bookwise.domain.model.TutorAction
 import kotlinx.coroutines.Job
@@ -11,82 +15,106 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-sealed interface TutorUiState {
-    data object Idle : TutorUiState
-    data object Loading : TutorUiState
-    data class Streaming(val text: String) : TutorUiState
-    data class Done(val text: String) : TutorUiState
-    data class Error(val message: String) : TutorUiState
-}
+data class TutorChatMessage(val role: String, val content: String)
 
 class TutorViewModel(
     private val tutorRepository: TutorRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<TutorUiState>(TutorUiState.Idle)
-    val uiState: StateFlow<TutorUiState> = _uiState.asStateFlow()
+    private val _messages = MutableStateFlow<List<TutorChatMessage>>(emptyList())
+    val messages: StateFlow<List<TutorChatMessage>> = _messages.asStateFlow()
 
+    private val _streamingText = MutableStateFlow("")
+    val streamingText: StateFlow<String> = _streamingText.asStateFlow()
+
+    private val _isStreaming = MutableStateFlow(false)
+    val isStreaming: StateFlow<Boolean> = _isStreaming.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    private var passage = ""
+    private var bookId = ""
+    private var locatorJson: String? = null
     private var streamJob: Job? = null
-    private var currentPassage: String = ""
-    private var currentLocatorJson: String? = null
-    private var currentBookId: String = ""
-    private var currentAction: TutorAction = TutorAction.EXPLAIN
-    private var currentQuestion: String? = null
-    private var currentLanguage: String? = null
 
-    fun start(
-        bookId: String,
-        passage: String,
-        locatorJson: String?,
-        action: TutorAction,
-        question: String? = null,
-        targetLanguage: String? = null
-    ) {
-        currentBookId = bookId
-        currentPassage = passage
-        currentLocatorJson = locatorJson
-        currentAction = action
-        currentQuestion = question
-        currentLanguage = targetLanguage
-        _uiState.value = TutorUiState.Loading
+    fun init(passage: String, bookId: String, locatorJson: String?) {
+        this.passage = passage
+        this.bookId = bookId
+        this.locatorJson = locatorJson
+        _messages.value = emptyList()
+        _streamingText.value = ""
+        _error.value = null
+        _isStreaming.value = false
+    }
+
+    fun sendMessage(text: String) {
+        if (text.isBlank() || _isStreaming.value) return
+        val userMsg = TutorChatMessage("user", text.trim())
+        _messages.value = _messages.value + userMsg
+        _isStreaming.value = true
+        _streamingText.value = ""
+        _error.value = null
+
         streamJob = viewModelScope.launch {
             val buffer = StringBuilder()
             try {
-                tutorRepository.streamExplanation(action, passage, question, targetLanguage).collect { delta ->
+                val chatMessages = buildChatMessages()
+                tutorRepository.streamChat(chatMessages).collect { delta ->
                     buffer.append(delta)
-                    _uiState.value = TutorUiState.Streaming(buffer.toString())
+                    _streamingText.value = buffer.toString()
                 }
-                _uiState.value = TutorUiState.Done(buffer.toString())
+                if (buffer.isNotEmpty()) {
+                    _messages.value = _messages.value + TutorChatMessage("assistant", buffer.toString())
+                } else {
+                    _error.value = "No response received. Check the model name and API key."
+                }
             } catch (e: Exception) {
-                _uiState.value = TutorUiState.Error(e.message ?: "Failed")
+                _error.value = e.message ?: "Failed"
+            } finally {
+                _streamingText.value = ""
+                _isStreaming.value = false
             }
         }
+    }
+
+    private fun buildChatMessages(): List<ChatMessage> {
+        val systemPrompt = "You are a helpful reading tutor. The user selected this passage from a book:\n\n\"\"\"\n$passage\n\"\"\"\n\nAnswer their questions about this passage. Be concise and helpful."
+        val msgs = mutableListOf(ChatMessage("system", systemPrompt))
+        _messages.value.forEach { msgs.add(ChatMessage(it.role, it.content)) }
+        return msgs
     }
 
     fun stop() {
         streamJob?.cancel()
         streamJob = null
+        _isStreaming.value = false
+        if (_streamingText.value.isNotEmpty()) {
+            _messages.value = _messages.value + TutorChatMessage("assistant", _streamingText.value)
+            _streamingText.value = ""
+        }
     }
 
     fun save() {
-        val text = (_uiState.value as? TutorUiState.Done)?.text
-            ?: (_uiState.value as? TutorUiState.Streaming)?.text
-            ?: return
+        val lastAssistant = _messages.value.lastOrNull { it.role == "assistant" }?.content ?: return
+        val lastUser = _messages.value.lastOrNull { it.role == "user" }?.content
         viewModelScope.launch {
             tutorRepository.saveExplanation(
-                bookId = currentBookId,
-                locatorJson = currentLocatorJson,
-                selectedText = currentPassage,
-                action = currentAction,
-                prompt = currentQuestion,
-                response = text
+                bookId = bookId,
+                locatorJson = locatorJson,
+                selectedText = passage,
+                action = TutorAction.EXPLAIN,
+                prompt = lastUser,
+                response = lastAssistant
             )
         }
     }
 
     fun reset() {
         stop()
-        _uiState.value = TutorUiState.Idle
+        _messages.value = emptyList()
+        _streamingText.value = ""
+        _error.value = null
     }
 
     companion object {

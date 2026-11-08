@@ -140,14 +140,17 @@ fun ReaderScreen(
                                 override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean = false
                                 override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
                                     return when (item?.itemId) {
-                                        MENU_ASK_TUTOR -> {
-                                            scope.launch {
-                                                viewModel.captureSelection()
-                                                showTutor = true
-                                            }
-                                            mode?.finish()
-                                            true
+                                    MENU_ASK_TUTOR -> {
+                                        scope.launch {
+                                            viewModel.captureSelection()
+                                            val passage = viewModel.selectedText.value ?: return@launch
+                                            val locator = viewModel.selectedLocatorJson.value
+                                            tutorViewModel.init(passage, state.book.id, locator)
+                                            showTutor = true
                                         }
+                                        mode?.finish()
+                                        true
+                                    }
                                         else -> false
                                     }
                                 }
@@ -182,12 +185,10 @@ fun ReaderScreen(
                     }
                     if (showTutor && selectedText != null) {
                         TutorSheet(
-                            bookId = state.book.id,
                             passage = selectedText!!,
-                            locatorJson = selectedLocatorJson,
                             viewModel = tutorViewModel,
                             onDismiss = { showTutor = false },
-                            onSave = { }
+                            onSave = { tutorViewModel.save() }
                         )
                     }
                     LaunchedEffect(state.renditionState) {
